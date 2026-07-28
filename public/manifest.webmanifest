@@ -1,0 +1,18 @@
+{
+  "name": "Hostel Expense Manager",
+  "short_name": "HostelExpense",
+  "description": "Manage hostel expenses, budgets, categories, and reports with offline-ready PWA support.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#6366f1",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "categories": ["productivity", "finance"],
+  "lang": "en-US"
+}
