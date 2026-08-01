@@ -6,11 +6,13 @@ import { listExpenses } from "../services/expenseService";
 import type { Expense } from "../types";
 import { Card } from "../components/ui/Card";
 
+const creditPaymentModes = ["Cred", "Credit Card"] as const;
+
 const reportTabs = [
   { label: "All", key: "all" },
-  { label: "Expense by Month", key: "month" },
-  { label: "Expense by Week", key: "week" },
-  { label: "Expenses by Paid By", key: "paidBy" },
+  { label: "By Month", key: "month" },
+  { label: "By Week", key: "week" },
+  { label: "By Paid By", key: "paidBy" },
   { label: "Custom", key: "custom" },
 ] as const;
 
@@ -73,6 +75,7 @@ export default function ReportsPage() {
   const [amountOperator, setAmountOperator] = useState<FilterOperator>(">");
   const [amountValue, setAmountValue] = useState("");
   const [paidByFilter, setPaidByFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [dateFromFilter, setDateFromFilter] = useState("");
   const [dateToFilter, setDateToFilter] = useState("");
@@ -84,31 +87,47 @@ export default function ReportsPage() {
     staleTime: 1000 * 60,
   });
 
-  const expenses = expensesQuery.data ?? [];
+  const allExpenses = expensesQuery.data ?? [];
   const isLoading = expensesQuery.isLoading;
 
-  const monthOptions = useMemo(() => getUniqueMonths(expenses), [expenses]);
-  const weekOptions = useMemo(() => getUniqueWeeks(expenses), [expenses]);
-  const payeeOptions = useMemo(() => getUniquePayees(expenses), [expenses]);
+  const creditExpenses = useMemo(
+    () =>
+      allExpenses.filter((expense) =>
+        creditPaymentModes.includes(
+          expense.paymentMode as (typeof creditPaymentModes)[number],
+        ),
+      ),
+    [allExpenses],
+  );
+
+  const monthOptions = useMemo(
+    () => getUniqueMonths(allExpenses),
+    [allExpenses],
+  );
+  const weekOptions = useMemo(() => getUniqueWeeks(allExpenses), [allExpenses]);
+  const payeeOptions = useMemo(
+    () => getUniquePayees(allExpenses),
+    [allExpenses],
+  );
 
   const filteredByTab = useMemo(() => {
     if (activeTab === "all") {
-      return expenses;
+      return allExpenses;
     }
 
     if (activeTab === "month") {
       return selectedMonth
-        ? expenses.filter(
+        ? allExpenses.filter(
             (expense) =>
               format(parseISO(expense.expenseDate), "yyyy-MM") ===
               selectedMonth,
           )
-        : expenses;
+        : allExpenses;
     }
 
     if (activeTab === "week") {
       return selectedWeek
-        ? expenses.filter((expense) => {
+        ? allExpenses.filter((expense) => {
             const weekStart = startOfWeek(parseISO(expense.expenseDate), {
               weekStartsOn: 1,
             })
@@ -116,28 +135,29 @@ export default function ReportsPage() {
               .slice(0, 10);
             return weekStart === selectedWeek;
           })
-        : expenses;
+        : allExpenses;
     }
 
     if (activeTab === "paidBy") {
       return selectedPayer
-        ? expenses.filter((expense) => expense.expenseBy === selectedPayer)
-        : expenses;
+        ? allExpenses.filter((expense) => expense.expenseBy === selectedPayer)
+        : allExpenses;
     }
 
     if (activeTab === "custom") {
       const start = parseISO(customFrom);
       const end = parseISO(customTo);
-      return expenses.filter((expense) => {
+      return allExpenses.filter((expense) => {
         const date = parseISO(expense.expenseDate);
         return date >= start && date <= end;
       });
     }
 
-    return expenses;
+    return allExpenses;
   }, [
     activeTab,
-    expenses,
+    allExpenses,
+    creditExpenses,
     selectedMonth,
     selectedWeek,
     selectedPayer,
@@ -155,6 +175,17 @@ export default function ReportsPage() {
         if (amountOperator === ">" && expense.amount <= amount) return false;
         if (amountOperator === "<" && expense.amount >= amount) return false;
         if (amountOperator === "=" && expense.amount !== amount) return false;
+      }
+
+      if (typeFilter.trim()) {
+        const rowType = creditPaymentModes.includes(
+          expense.paymentMode as (typeof creditPaymentModes)[number],
+        )
+          ? "Credit"
+          : "Expense";
+        if (!rowType.toLowerCase().includes(typeFilter.trim().toLowerCase())) {
+          return false;
+        }
       }
 
       if (paidByFilter.trim()) {
@@ -194,6 +225,7 @@ export default function ReportsPage() {
     filteredByTab,
     amountOperator,
     amountValue,
+    typeFilter,
     paidByFilter,
     categoryFilter,
     dateFromFilter,
@@ -326,6 +358,7 @@ export default function ReportsPage() {
               <thead className="bg-slate-50 text-slate-700">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Amount</th>
+                  <th className="px-4 py-3 font-semibold">Type</th>
                   <th className="px-4 py-3 font-semibold">Paid By</th>
                   <th className="px-4 py-3 font-semibold">Payment Category</th>
                   <th className="px-4 py-3 font-semibold">Date</th>
@@ -336,7 +369,9 @@ export default function ReportsPage() {
                       <select
                         value={amountOperator}
                         onChange={(event) =>
-                          setAmountOperator(event.target.value as FilterOperator)
+                          setAmountOperator(
+                            event.target.value as FilterOperator,
+                          )
                         }
                         className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-slate-700 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
                         aria-label="Amount operator"
@@ -358,6 +393,16 @@ export default function ReportsPage() {
                   <th className="px-4 py-3">
                     <input
                       type="text"
+                      value={typeFilter}
+                      onChange={(event) => setTypeFilter(event.target.value)}
+                      placeholder="Type"
+                      className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-slate-700 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
+                      aria-label="Type filter"
+                    />
+                  </th>
+                  <th className="px-4 py-3">
+                    <input
+                      type="text"
                       value={paidByFilter}
                       onChange={(event) => setPaidByFilter(event.target.value)}
                       placeholder="Paid By"
@@ -369,7 +414,9 @@ export default function ReportsPage() {
                     <input
                       type="text"
                       value={categoryFilter}
-                      onChange={(event) => setCategoryFilter(event.target.value)}
+                      onChange={(event) =>
+                        setCategoryFilter(event.target.value)
+                      }
                       placeholder="Category"
                       className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-slate-700 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
                       aria-label="Category filter"
@@ -380,14 +427,18 @@ export default function ReportsPage() {
                       <input
                         type="date"
                         value={dateFromFilter}
-                        onChange={(event) => setDateFromFilter(event.target.value)}
+                        onChange={(event) =>
+                          setDateFromFilter(event.target.value)
+                        }
                         className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-slate-700 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
                         aria-label="Date from filter"
                       />
                       <input
                         type="date"
                         value={dateToFilter}
-                        onChange={(event) => setDateToFilter(event.target.value)}
+                        onChange={(event) =>
+                          setDateToFilter(event.target.value)
+                        }
                         className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-slate-700 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
                         aria-label="Date to filter"
                       />
@@ -410,6 +461,13 @@ export default function ReportsPage() {
                     <tr key={expense.id}>
                       <td className="px-4 py-4 font-semibold text-slate-900">
                         {formatCurrency(expense.amount)}
+                      </td>
+                      <td className="px-4 py-4 text-slate-700">
+                        {creditPaymentModes.includes(
+                          expense.paymentMode as (typeof creditPaymentModes)[number],
+                        )
+                          ? "Credit"
+                          : "Expense"}
                       </td>
                       <td className="px-4 py-4 text-slate-700">
                         {expense.expenseBy}

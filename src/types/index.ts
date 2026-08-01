@@ -3,10 +3,15 @@ export type ExpenseStatus = 'pending' | 'approved' | 'reimbursed';
 export type PaymentMode =
   | 'Cash'
   | 'UPI'
-  | 'Bank Transfer'
+  | 'PhonePe'
+  | 'Paytm'
+  | 'GPay'
+  | 'Cred'
   | 'Credit Card'
   | 'Debit Card'
-  | 'Cheque';
+  | 'Bank Transfer'
+  | 'Cheque'
+  | 'Other UPI';
 
 export interface Category {
   id: string;

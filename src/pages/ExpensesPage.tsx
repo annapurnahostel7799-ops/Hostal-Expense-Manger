@@ -21,7 +21,15 @@ const expenseTypes = [
   "Subscriptions",
   "Other",
 ];
-const paymentModes = ["PhonePe", "Paytm", "GPay", "Cred", "cash", "Other UPI"];
+const paymentModes = [
+  "PhonePe",
+  "Paytm",
+  "GPay",
+  "Cred",
+  "Credit Card",
+  "cash",
+  "Other UPI",
+];
 const paidByOptions = ["Arjun", "Babu", "Raja"];
 const paidByEmailMap: Record<string, string> = {
   "rajasekhar.paati@gmail.com": "Raja",
