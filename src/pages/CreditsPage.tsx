@@ -15,18 +15,6 @@ const creditExpenseTypes = [
   "Other",
 ];
 
-function formatStatusLabel(status: Expense["status"]) {
-  switch (status) {
-    case "approved":
-      return "Approved";
-    case "reimbursed":
-      return "Reimbursed";
-    case "pending":
-    default:
-      return "Pending";
-  }
-}
-
 type CreditFormState = {
   amount: string;
   type: string;
@@ -84,14 +72,6 @@ export default function CreditsPage() {
   const totalCredit = useMemo(
     () =>
       creditExpenses.reduce((sum, expense) => sum + Number(expense.amount), 0),
-    [creditExpenses],
-  );
-
-  const outstandingCredit = useMemo(
-    () =>
-      creditExpenses
-        .filter((expense) => expense.status !== "reimbursed")
-        .reduce((sum, expense) => sum + Number(expense.amount), 0),
     [creditExpenses],
   );
 
