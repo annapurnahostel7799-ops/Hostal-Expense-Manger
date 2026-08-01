@@ -5,6 +5,10 @@ import { useAuthContext } from "../contexts/AuthContext";
 import { listExpenses } from "../services/expenseService";
 import type { Expense } from "../types";
 import { Card } from "../components/ui/Card";
+import { Button } from "../components/ui/Button";
+import { jsPDF } from "jspdf";
+import { autoTable } from "jspdf-autotable";
+import * as XLSX from "xlsx";
 
 const creditPaymentModes = ["Cred", "Credit Card"] as const;
 
@@ -58,6 +62,55 @@ function getUniquePayees(expenses: Expense[]) {
   return Array.from(
     new Set(expenses.map((expense) => expense.expenseBy || "Unknown")),
   ).sort();
+}
+
+function formatCurrencyForPdf(value: number) {
+  return `Rs ${value.toLocaleString("en-IN", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function buildReportRows(expenses: Expense[], usePdf = false) {
+  return expenses.map((expense) => [
+    usePdf ? formatCurrencyForPdf(expense.amount) : formatCurrency(expense.amount),
+    creditPaymentModes.includes(
+      expense.paymentMode as (typeof creditPaymentModes)[number],
+    )
+      ? "Credit"
+      : "Expense",
+    expense.expenseBy,
+    expense.categoryName,
+    formatExpenseDate(expense.expenseDate),
+  ]);
+}
+
+function exportToExcel(expenses: Expense[]) {
+  const worksheet = XLSX.utils.aoa_to_sheet([
+    ["Amount", "Type", "Paid By", "Category", "Date"],
+    ...buildReportRows(expenses),
+  ]);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Report");
+  XLSX.writeFile(workbook, "expense-report.xlsx");
+}
+
+function exportToPdf(expenses: Expense[]) {
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  doc.setFontSize(14);
+  doc.text("Expense Report", 40, 40);
+
+  autoTable(doc, {
+    startY: 60,
+    head: [["Amount", "Type", "Paid By", "Category", "Date"]],
+    body: buildReportRows(expenses, true),
+    styles: { fontSize: 10, cellPadding: 6 },
+    headStyles: { fillColor: [250, 172, 20], textColor: 0 },
+    alternateRowStyles: { fillColor: [245, 245, 245] },
+    margin: { left: 40, right: 40 },
+  });
+
+  doc.save("expense-report.pdf");
 }
 
 export default function ReportsPage() {
@@ -339,7 +392,7 @@ export default function ReportsPage() {
         </div>
 
         <Card className="rounded-[2rem] bg-white/90 p-8 shadow-soft ring-1 ring-orange-100">
-          <div className="mb-6 flex items-center justify-between gap-4">
+          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-2xl font-semibold text-slate-900">
                 Expense Report
@@ -348,9 +401,25 @@ export default function ReportsPage() {
                 Showing {filteredExpenses.length} records.
               </p>
             </div>
-            {isLoading ? (
-              <p className="text-sm text-slate-500">Loading expenses…</p>
-            ) : null}
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => exportToExcel(filteredExpenses)}
+              >
+                Export Excel
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => exportToPdf(filteredExpenses)}
+              >
+                Export PDF
+              </Button>
+              {isLoading ? (
+                <p className="text-sm text-slate-500">Loading expenses…</p>
+              ) : null}
+            </div>
           </div>
 
           <div className="overflow-x-auto">
